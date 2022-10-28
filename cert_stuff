@@ -1,0 +1,60 @@
+###self signed method
+openssl req -newkey rsa:4096 \
+            -x509 \
+            -sha256 \
+            -days 3650 \
+	    -addtext "subjectAltName = DNS:gitlab.domain.com" \ #this will only work with specific v of openssl
+            -nodes \
+            -out gitlab.crt \
+            -keyout gitlab.key
+
+
+
+
+###generate CSR method (Certificate Signing Request) 
+
+#create configuration file 'file.cnf' that contains cert details
+vi /path/to/ssl/file.cnf
+--------------------------
+[req] #don't modify this section
+distinguished_name = req_distinguished_name 
+req_extensions = v3_req
+prompt = no
+
+[req_distinguished_name] #modify everything in this section for site specific info
+C = US
+ST = VA
+L = Fairfax
+O = Org
+OU = Org Unit
+CN = gitlab.domain.com
+
+[v3_req] #don't modify this section
+extendedKeyUsage = serverAuth
+subjectAltName = @alt_names
+[alt_names] #modify for Subject Alt Names
+DNS.1 = gitlab.domain.com
+DNS.2 = gitlab
+DNS.3 = mattermost.domain.com
+DNS.4 = mattermost
+---------------------------
+
+#use the config file to generate a CSR
+#command below creates the CSR key pair
+openssl req -new -out gitlab.csr -newkey rsa:4096 -nodes -sha256 -keyout gitlab.key -config file.cnf
+
+#all necessary files for the CSR method should be ready now
+ll /path/to/ssl/
+
+#give gitlab.csr (pub key) to CA to sign and to generate certificate (gitlab.crt)
+
+#can then create a .pem with gitlab.crt and the rest of the key chain and add it to the trust store (root at top and go down the chain)
+#for gitlab's example
+
+cp -p gitlab.pem /etc/gitlab/trusted-certs
+
+gitlab-ctl reconfigure
+
+####miscellaneous
+/etc/pki-ca-trust/source/anchors
+/etc/pki/tls/certs
