@@ -1,0 +1,57 @@
+#install packages
+yum install sssd
+yum install realmd krb5-workstation samba-common-tools -y
+
+#join the domain using a domain admin acc
+realm join -U admin@domainfqdn.com domainfqdn.com
+
+#edit sssd.conf
+vi /etc/sssd/sssd.conf
+----------------------------------
+[sssd]
+domains = domainfqdn.com
+config_file_version = 2
+services = nss, pam
+
+[domain/domainfqdn.com]
+ad_domain = domainfqdn.com
+krb5_realm = DOMAINFQDN.COM
+realmd_tags = manages-system joined-with-samba
+cache_credentials = True
+id_provider = ad
+krb5_store_password_if_offline = True
+default_shell = /bin/bash
+ldap_id_mapping = True
+use_fully_qualified_names = False
+fallback_homedir = /home/%u
+access_provider = ad
+----------------------------------
+
+#restart sssd
+systemctl restart sssd
+
+#edit sshd_config
+vi /etc/ssh/sshd_config
+----------------------------------
+AuthorizedKeysCommand /opt/aws/bin/eic_run_authorized_keys %u %f
+AuthorizedKeysCommandUser ec2-instance-connect
+PermitEmptyPasswords no
+PermitUserEnvironment no
+HostbasedAuthentication no
+Ciphers aes256-ctr,aes192-ctr,aes128-ctr
+ClientAliveInterval 600
+ClientAliveCountMax 0
+IgnoreRhosts yes
+PrintLastLog yes
+PermitRootLogin no
+IgnoreUserKnownHosts yes
+Protocol 2
+MACs hmac-sha2-512,hmac-sha2-256
+KerberosAuthentication no
+StrictModes yes
+UsePrivilegeSeparation sandbox
+Compression no
+-----------------------------------
+
+#restart sshd
+systemctl restart sshd
