@@ -1,4 +1,5 @@
 ###self signed method
+
 openssl req -newkey rsa:4096 \
             -x509 \
             -sha256 \
@@ -14,6 +15,7 @@ openssl req -newkey rsa:4096 \
 ###generate CSR method (Certificate Signing Request) 
 
 #create configuration file 'file.cnf' that contains cert details
+
 vi /path/to/ssl/file.cnf
 --------------------------
 [req] #don't modify this section
@@ -41,9 +43,11 @@ DNS.4 = mattermost
 
 #use the config file to generate a CSR
 #command below creates the CSR key pair
+
 openssl req -new -out gitlab.csr -newkey rsa:4096 -nodes -sha256 -keyout gitlab.key -config file.cnf
 
 #all necessary files for the CSR method should be ready now
+
 ll /path/to/ssl/
 
 #give gitlab.csr (pub key) to CA to sign and to generate certificate (gitlab.crt)
@@ -56,5 +60,6 @@ cp -p gitlab.pem /etc/gitlab/trusted-certs
 gitlab-ctl reconfigure
 
 ####miscellaneous
+
 /etc/pki-ca-trust/source/anchors
 /etc/pki/tls/certs

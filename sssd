@@ -1,11 +1,14 @@
 #install packages
+
 yum install sssd
 yum install realmd krb5-workstation samba-common-tools -y
 
 #join the domain using a domain admin acc
+
 realm join -U admin@domainfqdn.com domainfqdn.com
 
 #edit sssd.conf
+
 vi /etc/sssd/sssd.conf
 ----------------------------------
 [sssd]
@@ -28,9 +31,11 @@ access_provider = ad
 ----------------------------------
 
 #restart sssd
+
 systemctl restart sssd
 
 #edit sshd_config
+
 vi /etc/ssh/sshd_config
 ----------------------------------
 AuthorizedKeysCommand /opt/aws/bin/eic_run_authorized_keys %u %f
@@ -54,4 +59,5 @@ Compression no
 -----------------------------------
 
 #restart sshd
+
 systemctl restart sshd
