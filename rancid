@@ -1,0 +1,77 @@
+#Rancid is a config differ tool.. mainly used to track change configuration for network devices
+
+#install
+
+yum install rancid cvs
+
+#setup groups
+
+vi /etc/rancid/rancid.conf
+
+------------------------------
+# list of rancid groups
+LIST_OF_GROUPS="routers switches access-points"
+------------------------------
+
+#setup mail aliases if you want.. rancid sends emails to the aliases rancid-<groupname>
+
+vi /etc/aliases
+
+------------------------------
+rancid-routers		email.com
+rancid-switches		email.com
+rancid-access-points	email.com
+------------------------------
+
+#rancid uses Concurrent Versions System (cvs) to track changes.. prepare the cvs database
+
+su rancid
+/usr/bin/rancid-cvs  #creates a directory for each group in /var/rancid
+
+#add hosts to router.db
+
+vi /var/lib/rancid/routers/router.db
+
+------------------------------
+zachsw001.fqdn.com;juniper;up  #add rancid as a login user to switch, define user class (admin), add rancid pubkey
+zachsw002.fqdn.com;juniper;up 
+zachsw003.fqdn.com;dellpc;up  #can use radius authentication
+zachfw001.fqdn.com;juniper;up
+zachfw002.fqdn.com;juniper;down
+------------------------------
+
+#configure credentials to access devices in rancid user's home dir
+
+vi /var/rancid/.cloginrc
+
+------------------------------
+add method * ssh	#tell rancid to login to all devices with ssh
+add password * {encryptedpw} none	#rancid user pw
+add cyphertype * {aes256-ctr}
+add autoenable * 1	#places rancid in enabled mode after login
+
+add user zachsw003.fqdn.com svc-rancid	#add separate user for radius authentication.. i.e. service account with secret
+------------------------------
+
+#test rancid... make sure you switch user to rancid
+
+cd /usr/libexec/rancid
+./clogin zachsw001
+
+#schedule rancid to run with cron
+
+crontab -e
+
+0 * * * * * /usr/bin/rancid-run		#runs rancid every hour and notifies members of a respective group when devices change
+
+#view rancid change history
+
+cvs log zachsw001	#lists revision numbers
+
+cvs dif -r 1.2 -r 1.3 zachsw001		#does a diff between revision numbers for a device
+
+#rancid logs
+
+/var/log/rancid/<groupname>.yyyymmdd.time
+
+###https://networklore.com/rancid-getting-started is a good reference###
