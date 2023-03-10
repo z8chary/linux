@@ -1,0 +1,117 @@
+### Migrate Gitlab
+### References (in order of how they're referenced):
+1. https://www.mikestreety.co.uk/blog/migrating-gitlab-from-one-server-to-another/
+2. https://about.gitlab.com/install/#amazonlinux-2
+3. https://docs.gitlab.com/ee/raketasks/restore_gitlab.html
+4. https://docs.gitlab.com/ee/integration/mattermost/#back-up-gitlab-mattermost
+
+#Verify the gitlab-ce version of the current server
+
+###Stage/Set up a new server
+#build new server
+#verify paritioning
+#join to domain
+#ensure /var is healthy and sshd can restart
+yum update
+yum install -y curl policycoreutils-python openssh-server openssh-clients perl
+
+#add Gitlab package repository and install it
+curl https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.rpm.sh | sudo bash
+
+
+
+#install the SAME gitlab-ce version as the current server
+sudo EXTERNAL_URL="https://gitlab.yourdomainhere.com" yum install -y gitlab-ce-15.1.0
+gitlab-ctl reconfigure
+
+###Backup original server
+#on original server:
+gitlab-backup create
+
+#backup gets placed in /var/opt/gitlab/backups i.e. 1678387895_2023_03_09_15.1.0_gitlab_backup.tar
+
+#backup /etc/gitlab/*
+
+#move backups to the new server and place them in the same directories they came from
+
+gitlab-ctl stop
+
+###Restore gitlab
+#on the new server:
+#ensure gitlab.rb has gitlab_rails['/var/opt/gitlab/backups'] 
+#ensure the backup file that was moved over is owned by the git user
+
+#update dns to point gitlab and mattermost entries to the new server's IP
+
+gitlab-ctl reconfigure
+gitlab-ctl start
+
+#stop processes connected to the database
+
+gitlab-ctl stop puma
+gitlab-ctl stop sidekiq
+gitlab-ctl status
+
+#restore the backup (since only one backup exists, no need to specify)
+
+gitlab-backup restore
+
+gitlab-ctl reconfigure
+gitlab-ctl restart
+
+#verify database values
+gitlab-rake gitlab:check SANITIZE=true
+
+#do integrity check on uploaded files
+
+gitlab-rake gitlab:artifacts:check
+gitlab-rake gitlab:lfs:check
+gitlab-rake gitlab:uploads:check
+
+#verify by logging into gitlab url and viewing projects/users
+#if everything passes, reboot and then move forward with restoring mattermost
+
+###on the original server
+
+gitlab-ctl start
+
+#verify you can run gitlab-psql command to enter mattermost_production db
+
+gitlab-psql -d mattermost_production
+exit
+
+#backup the bundled PostgreSQL database
+
+cd /etc/gitlab/bak/
+sudo -i -u gitlab-psql -- /opt/gitlab/embedded/bin/pg_dump -h /var/opt/gitlab/postgresql mattermost_production | gzip > mattermost_dbdump_$(date --rfc-3339=date).sql.gz
+
+#backup the data directory and config.json
+
+cd /etc/gitlab/bak/
+sudo tar -zcvf mattermost_data_$(date --rfc-3339=date).gz -C /var/opt/gitlab/mattermost data config.json
+
+#copy two mattermost backups in /etc/gitlab/bak to the new gitlab server (I created /etc/gitlab/bak to keep things similar but /tmp works)
+
+###on the new server in the directory where the backups got moved to:
+gitlab-ctl stop mattermost
+
+#drop the mattermost db
+sudo -u gitlab-psql /opt/gitlab/embedded/bin/dropdb -U gitlab-psql -h /var/opt/gitlab/postgresql -p 5432 mattermost_production
+
+#create the mattermost db
+sudo -u gitlab-psql /opt/gitlab/embedded/bin/createdb -U gitlab-psql -h /var/opt/gitlab/postgresql -p 5432 mattermost_production
+
+#perform the db restore.. replace the backup file with your path/backup
+sudo -u mattermost sh -c "zcat /tmp/mattermost_dbdump_2021-08-05.sql.gz | /opt/gitlab/embedded/bin/psql -U gitlab_mattermost -h /var/opt/gitlab/postgresql -p 5432 mattermost_production"
+
+#restore the data dir and config.json.. replace the backup file with your path/backup
+sudo tar -xzvf /tmp/mattermost_data_2021-08-09.gz -C /var/opt/gitlab/mattermost
+
+#fix permissions if required
+chown -R mattermost:mattermost /var/opt/gitlab/mattermost/data
+chown mattermost:mattermost /var/opt/gitlab/mattermost/config.json
+
+#start mattermost
+gitlab-ctl start mattermost
+
+#verify you can login to mattermost and see existing chat data
