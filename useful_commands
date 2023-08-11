@@ -1,0 +1,4 @@
+# Useful Linux commands
+
+# scp a file to multiple hosts
+for h in host1 host2 host3 host4 ; { scp testfile.rpm username@$h:/tmp ; }
