@@ -2,3 +2,31 @@
 
 # scp a file to multiple hosts
 for h in host1 host2 host3 host4 ; { scp testfile.rpm username@$h:/tmp ; }
+
+# tunneling
+	# tunnel that binds examplehostname:5432 to localhost:54321
+	ssh -L 54321:examplehostname:5432 username@examplehostname
+
+	# use psql to query the db over this tunnel
+	psql -h localhost -p 54321 -U username
+
+	# setup tunnel from localhost port 2222 though examplehostname to examplehostname2
+	ssh -f -N -q -o "ServerAliveInterval=5" -o "ServerAliveCountMax=2" -L 2222:examplehostname2:22 -l username examplehostname
+
+	# setup a second tunnel (ssh) from localhost 2223 through 2222 tunnel (on examplehostname2) to examplehostname3
+	ssh -f -N -q -o "ServerAliveInterval=5" -o "ServerAliveCountMax=2" -L 2223:ipaddress:22 -l username -p 2222 localhost
+	
+	# setup a third tunnel (rdp) from localhost 2224 through 2222 tunnel (on examplehostname2) to examplehostname3
+	ssh -f -N -q -o "ServerAliveInterval=5" -o "ServerAliveCountMax=2" -L 2224:ipaddress:3389 -l username -p 2222 localhost
+
+	# ssh to examplehostname3
+	ssh -p 2223 username@localhost
+
+	# rdp to examplehostname3
+	mstsc /v localhost:2224
+
+	# freerdp to examplehostname3
+	/usr/bin/xfreerdp /u:username /v:localhost:2224
+
+	# scp file to examplehostname3
+	scp -P 2223 example_file username@localhost:/tmp
