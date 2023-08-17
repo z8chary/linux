@@ -1,0 +1,10 @@
+# backup jira database
+0 0 * * * su - postgres -c "/usr/bin/pg_dumpall -U postgres > /data/backup/jira-pg_`date +\%Y\%m\%d\%H\%M\%S`.dmp"
+# backup jira attachments
+0 0 * * * tar -czf /data/backup/jira_attach_`date +\%Y\%m\%d\%H\%M\%S`.gz /var/atlassian/application-data/jira/data/
+# move jira backup to /data/backup
+0 1 * * * \mv %(ls -t /var/atlassian/application-data/jira/export/* | head -1) /data/backup/
+# set permissions on backup directory
+30 1 * * * /etc/cron.daily/bkpermset.sh
+# move backup files to backup server
+45 1 * * * su - svc-backup "/etc/cron.d/move2backup.sh"

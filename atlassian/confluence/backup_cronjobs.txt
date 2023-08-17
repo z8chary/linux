@@ -1,0 +1,4 @@
+# set perms on backup dir
+50 2 * * * /etc/cron.daily/bkpermset.sh
+# move backup files to backup server
+55 2 * * * su - svc-backup "/etc/cron.d/move2backup.sh"
