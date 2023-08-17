@@ -1,0 +1,14 @@
+# iptables stuff
+# /etc/sysconfig/iptables
+
+iptables -L
+
+iptables -I INPUT -p tcp -m tcp --dport 420 -j ACCEPT
+iptables-save
+
+iptables -A INPUT -p tcp --dport 420 -m comment --comment "testing 420" -j ACCEPT
+iptables-save
+
+iptables -S | grep 420
+iptables -L --line-numbers | grep 420
+iptables -L --line-numbers
