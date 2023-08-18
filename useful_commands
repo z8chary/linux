@@ -30,3 +30,7 @@ for h in host1 host2 host3 host4 ; { scp testfile.rpm username@$h:/tmp ; }
 
 	# scp file to examplehostname3
 	scp -P 2223 example_file username@localhost:/tmp
+
+# search and replace in vim
+:s/<search_phrase>/<replace_phrase>/g # all occurences on a single line
+:%s/<search_phrase>/<replace_phrase>/g # all occurances in the entire file
