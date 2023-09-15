@@ -10,6 +10,10 @@ for h in host1 host2 host3 host4 ; { scp testfile.rpm username@$h:/tmp ; }
 	# use psql to query the db over this tunnel
 	psql -h localhost -p 54321 -U username
 
+	# tunnel through jumpbox for vnc on port 5901
+	ssh -o ServerAliveInterval=60 -J zwalker@jumpbox -L 59101:localhost:5901 -L 59122:localhost:22 zwalker@host1
+	# then connect to localhost:59101 for vnc to host1
+
 	# setup tunnel from localhost port 2222 though examplehostname to examplehostname2
 	ssh -f -N -q -o "ServerAliveInterval=5" -o "ServerAliveCountMax=2" -L 2222:examplehostname2:22 -l username examplehostname
 
